@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
+import hmac
+import json as json_module
 import logging
 import time
 from pathlib import Path
@@ -65,6 +68,7 @@ class X402Client:
         timeout: int | float | None = None,
         wallet_path: str | Path | None = None,
         password: str | None = None,
+        validation_secret: str | None = None,
     ) -> None:
         # Resolve network
         self._network: Network = chain or network or DEFAULT_NETWORK
@@ -72,9 +76,7 @@ class X402Client:
             raise InvalidConfigError(f"Unsupported chain: {self._network}")
 
         # Load or create wallet
-        wallet = load_or_create_wallet(
-            wallet_path, private_key=private_key, password=password
-        )
+        wallet = load_or_create_wallet(wallet_path, private_key=private_key, password=password)
         self._private_key = wallet.private_key
         self._address = wallet.address
         self._is_new_wallet = wallet.is_new
@@ -101,6 +103,9 @@ class X402Client:
             self._budget = BudgetTracker(config=budget)
         else:
             self._budget = BudgetTracker()
+
+        # Validation
+        self._validation_secret = validation_secret
 
         # Service blacklist
         self._blacklist: dict[str, float] = {}
@@ -232,9 +237,7 @@ class X402Client:
         services = data.get("data", data.get("services", []))
         return [ServiceInfo(**s) for s in services]
 
-    async def list_services_async(
-        self, *, page: int = 1, limit: int = 50
-    ) -> list[ServiceInfo]:
+    async def list_services_async(self, *, page: int = 1, limit: int = 50) -> list[ServiceInfo]:
         """Async list."""
         client = self._get_async_client()
         resp = await client.get(
@@ -311,7 +314,7 @@ class X402Client:
 
         # Check for free tier success
         if resp.status_code == 200:
-            return self._parse_success(resp)
+            return self._parse_success(resp, service_id)
 
         # Handle 402
         if resp.status_code == 402:
@@ -346,7 +349,7 @@ class X402Client:
             raise TimeoutError(url, int(effective_timeout * 1000))
 
         if resp.status_code == 200:
-            return self._parse_success(resp)
+            return self._parse_success(resp, service_id)
 
         if resp.status_code == 402:
             return await self._handle_402_async(
@@ -399,7 +402,7 @@ class X402Client:
                 raise TimeoutError(url, int(timeout * 1000))
 
             if retry_resp.status_code == 200:
-                call_result = self._parse_success(retry_resp)
+                call_result = self._parse_success(retry_resp, service_id)
                 call_result.tx_hash = result.tx_hash
                 call_result.payment_amount = details.amount
                 call_result.chain = self._network
@@ -460,7 +463,7 @@ class X402Client:
                 raise TimeoutError(url, int(timeout * 1000))
 
             if retry_resp.status_code == 200:
-                call_result = self._parse_success(retry_resp)
+                call_result = self._parse_success(retry_resp, service_id)
                 call_result.tx_hash = result.tx_hash
                 call_result.payment_amount = details.amount
                 call_result.chain = self._network
@@ -476,8 +479,8 @@ class X402Client:
 
         raise ApiError("Payment accepted but service still returned 402", 402, url)
 
-    def _parse_success(self, resp: httpx.Response) -> CallResult:
-        """Parse successful API response."""
+    def _parse_success(self, resp: httpx.Response, service_id: str = "") -> CallResult:
+        """Parse successful API response with validation."""
         try:
             data = resp.json()
         except Exception:
@@ -485,12 +488,79 @@ class X402Client:
 
         free_tier = "true" in (resp.headers.get("x-free-tier", "")).lower()
 
+        # HMAC signature verification
+        if self._validation_secret and isinstance(data, dict):
+            validation = (data.get("_x402") or {}).get("_validation", {})
+            server_sig = validation.get("signature")
+            if server_sig:
+                if not self._verify_hmac(data, server_sig):
+                    logger.warning("HMAC signature mismatch for %s — blacklisting", service_id)
+                    if service_id:
+                        self._blacklist[service_id] = time.time()
+
+        # Quality score check
+        if isinstance(data, dict) and service_id:
+            self._check_quality(data, service_id)
+
         return CallResult(
             status="success",
-            data=data.get("data", data),
+            data=data.get("data", data) if isinstance(data, dict) else data,
             raw=data if isinstance(data, dict) else {"data": data},
             free_tier_used=free_tier,
         )
+
+    def _verify_hmac(self, data: dict[str, Any], expected_sig: str) -> bool:
+        """Verify HMAC-SHA256 signature on response metadata."""
+        if not self._validation_secret:
+            return True
+
+        validation = (data.get("_x402") or {}).get("_validation", {})
+        metadata = {k: v for k, v in validation.items() if k != "signature"}
+
+        # Sort keys for deterministic serialization
+        canonical = json_module.dumps(metadata, sort_keys=True, separators=(",", ":"))
+        computed = hmac.new(
+            self._validation_secret.encode(),
+            canonical.encode(),
+            hashlib.sha256,
+        ).hexdigest()
+
+        return hmac.compare_digest(computed, expected_sig)
+
+    def _check_quality(self, data: dict[str, Any], service_id: str) -> None:
+        """Check response quality — detect empty/invalid responses."""
+        x402_meta = data.get("_x402", {})
+        server_score = x402_meta.get("quality_score", -1)
+
+        # If server says quality is high but response is essentially empty, blacklist
+        if server_score > 0.7:
+            response_data = data.get("data", data)
+            client_score = self._compute_quality_score(response_data)
+            if client_score < 0.2:
+                logger.warning(
+                    "Quality mismatch for %s (server=%.2f, client=%.2f) — blacklisting",
+                    service_id,
+                    server_score,
+                    client_score,
+                )
+                self._blacklist[service_id] = time.time()
+
+    @staticmethod
+    def _compute_quality_score(data: Any) -> float:
+        """Compute a simple quality score for response data."""
+        if data is None:
+            return 0.0
+        if isinstance(data, str):
+            return min(1.0, len(data.strip()) / 50)
+        if isinstance(data, dict):
+            if not data:
+                return 0.0
+            # Check if values are non-empty
+            non_empty = sum(1 for v in data.values() if v is not None and v != "" and v != [])
+            return min(1.0, non_empty / max(len(data), 1))
+        if isinstance(data, list):
+            return min(1.0, len(data) / 3)
+        return 0.5  # numbers, bools, etc.
 
     # ── Balance ──────────────────────────────────────────────────────
 
@@ -577,6 +647,53 @@ class X402Client:
             json={"address": self._address},
         )
         return resp.json()
+
+    # ── Fund Wallet ──────────────────────────────────────────────────
+
+    def fund_wallet(self) -> dict[str, Any]:
+        """Get funding instructions for the wallet.
+
+        Returns bridge URLs and instructions for each supported chain.
+        """
+        chain_config = CHAINS[self._network]
+        instructions: dict[str, Any] = {
+            "wallet_address": self._address,
+            "network": self._network,
+            "chain_id": chain_config.chain_id,
+            "usdc_contract": chain_config.usdc_contract,
+            "explorer": f"{chain_config.explorer}/address/{self._address}",
+            "instructions": [],
+        }
+
+        if self._network == "skale":
+            instructions["instructions"] = [
+                "1. Get free CREDITS gas: client.claim_faucet()",
+                "2. Bridge USDC from Base to SKALE: https://bridge.skale.space",
+                "3. Or use the faucet for test amounts",
+            ]
+        elif self._network == "base":
+            instructions["instructions"] = [
+                "1. Buy USDC on Coinbase and withdraw to Base",
+                "2. Or bridge from Ethereum: https://bridge.base.org",
+                "3. Send USDC to your wallet address above",
+            ]
+        elif self._network == "polygon":
+            instructions["instructions"] = [
+                "1. Buy USDC on any exchange and withdraw to Polygon",
+                "2. Or bridge from Ethereum: https://wallet.polygon.technology",
+                "3. Gas is paid in POL (~$0.001 per tx)",
+                "4. EIP-3009 payments are gas-free (facilitator pays gas)",
+            ]
+        else:
+            instructions["instructions"] = [
+                f"Send USDC to {self._address} on {self._network}",
+            ]
+
+        return instructions
+
+    async def fund_wallet_async(self) -> dict[str, Any]:
+        """Async version (same result, no network call needed)."""
+        return self.fund_wallet()
 
     # ── Repr ─────────────────────────────────────────────────────────
 
