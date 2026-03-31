@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import os
 import secrets
 import time
 
@@ -20,7 +19,6 @@ from x402_bazaar.chains import (
 )
 from x402_bazaar.exceptions import (
     InsufficientBalanceError,
-    NetworkError,
     PaymentError,
 )
 from x402_bazaar.types import PaymentDetails, PaymentResponse, PaymentResult
@@ -78,7 +76,7 @@ class PaymentHandler:
 
         tx = {
             "to": self.chain_config.usdc_contract,
-            "data": bytes.fromhex(call_data[2:]) if call_data.startswith("0x") else bytes.fromhex(call_data),
+            "data": bytes.fromhex(call_data[2:] if call_data.startswith("0x") else call_data),
             "gas": 100_000,
             "gasPrice": gas_price,
             "nonce": nonce,
@@ -160,7 +158,9 @@ class PaymentHandler:
             message_data=message,
         )
         signed = self.account.sign_message(signable)
-        signature = signed.signature.hex() if isinstance(signed.signature, bytes) else str(signed.signature)
+        signature = (
+            signed.signature.hex() if isinstance(signed.signature, bytes) else str(signed.signature)
+        )
         if not signature.startswith("0x"):
             signature = "0x" + signature
 
@@ -217,7 +217,9 @@ class PaymentHandler:
 
             logger.info(
                 "EIP-3009 payment via facilitator: %s (%.6f USDC to %s)",
-                tx_hash, amount_usdc, to,
+                tx_hash,
+                amount_usdc,
+                to,
             )
 
             return PaymentResult(
@@ -291,9 +293,7 @@ class PaymentHandler:
             import concurrent.futures
 
             with concurrent.futures.ThreadPoolExecutor() as pool:
-                return pool.submit(
-                    asyncio.run, self.pay(details)
-                ).result()
+                return pool.submit(asyncio.run, self.pay(details)).result()
         else:
             return asyncio.run(self.pay(details))
 

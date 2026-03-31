@@ -24,7 +24,7 @@ class ChainConfig:
     @property
     def usdc_unit(self) -> int:
         """1 USDC in smallest unit."""
-        return 10**self.usdc_decimals
+        return int(10**self.usdc_decimals)
 
 
 CHAINS: dict[Network, ChainConfig] = {

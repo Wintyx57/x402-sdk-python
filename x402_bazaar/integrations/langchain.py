@@ -5,7 +5,7 @@ Install: pip install x402-bazaar[langchain]
 
 from __future__ import annotations
 
-from typing import Any, Type
+from typing import Any
 
 try:
     from langchain_core.tools import BaseTool
@@ -22,7 +22,7 @@ from x402_bazaar.client import X402Client
 class SearchInput(BaseModel):
     """Input for X402SearchTool."""
 
-    query: str = Field(description="Search query for finding APIs (e.g., 'weather', 'translation', 'jokes')")
+    query: str = Field(description="Search query for finding APIs (e.g., 'weather', 'translation')")
 
 
 class CallInput(BaseModel):
@@ -48,7 +48,7 @@ class X402SearchTool(BaseTool):
         "Input: a search query string. "
         "Returns: list of matching APIs with their IDs, names, descriptions, and prices in USDC."
     )
-    args_schema: Type[BaseModel] = SearchInput
+    args_schema: type[BaseModel] = SearchInput
     client: X402Client
 
     class Config:
@@ -94,7 +94,7 @@ class X402CallTool(BaseTool):
         "Input: service_id (from search results) and optional params dict. "
         "Returns: API response data."
     )
-    args_schema: Type[BaseModel] = CallInput
+    args_schema: type[BaseModel] = CallInput
     client: X402Client
 
     class Config:
@@ -108,7 +108,9 @@ class X402CallTool(BaseTool):
             data_str = json.dumps(result.data, indent=2, default=str)
             payment_info = ""
             if result.tx_hash:
-                payment_info = f"\n[Paid {result.payment_amount} USDC on {result.chain}, tx: {result.tx_hash}]"
+                payment_info = (
+                    f"\n[Paid {result.payment_amount} USDC on {result.chain}, tx: {result.tx_hash}]"
+                )
             elif result.free_tier_used:
                 payment_info = "\n[Free tier used — no payment required]"
             return f"{data_str}{payment_info}"
@@ -123,7 +125,9 @@ class X402CallTool(BaseTool):
             data_str = json.dumps(result.data, indent=2, default=str)
             payment_info = ""
             if result.tx_hash:
-                payment_info = f"\n[Paid {result.payment_amount} USDC on {result.chain}, tx: {result.tx_hash}]"
+                payment_info = (
+                    f"\n[Paid {result.payment_amount} USDC on {result.chain}, tx: {result.tx_hash}]"
+                )
             elif result.free_tier_used:
                 payment_info = "\n[Free tier used — no payment required]"
             return f"{data_str}{payment_info}"

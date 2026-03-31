@@ -69,15 +69,21 @@ class BudgetTracker:
         self._maybe_reset()
         from datetime import datetime, timezone
 
-        remaining = max(0, self.config.max - self.spent) if self.config.max != float("inf") else float("inf")
+        is_unlimited = self.config.max == float("inf")
+        if is_unlimited:
+            remaining = float("inf")
+        else:
+            remaining = max(0, self.config.max - self.spent)
+
         period_seconds = PERIOD_SECONDS[self.config.period]
         reset_ts = self.period_start + period_seconds
+        reset_dt = None if is_unlimited else datetime.fromtimestamp(reset_ts, tz=timezone.utc)
 
         return BudgetStatus(
             spent=round(self.spent, 6),
             limit=self.config.max,
-            remaining=round(remaining, 6) if remaining != float("inf") else float("inf"),
+            remaining=round(remaining, 6) if not is_unlimited else float("inf"),
             period=self.config.period,
             call_count=self.call_count,
-            reset_at=datetime.fromtimestamp(reset_ts, tz=timezone.utc) if self.config.max != float("inf") else None,
+            reset_at=reset_dt,
         )

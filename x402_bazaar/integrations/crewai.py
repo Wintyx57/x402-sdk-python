@@ -6,15 +6,14 @@ Install: pip install x402-bazaar[crewai]
 from __future__ import annotations
 
 import json
-from typing import Any, Type
+from typing import Any
 
 try:
     from crewai.tools import BaseTool
     from pydantic import BaseModel, Field
 except ImportError as e:
     raise ImportError(
-        "CrewAI integration requires crewai. "
-        "Install with: pip install x402-bazaar[crewai]"
+        "CrewAI integration requires crewai. Install with: pip install x402-bazaar[crewai]"
     ) from e
 
 from x402_bazaar.client import X402Client
@@ -44,7 +43,7 @@ class X402SearchTool(BaseTool):
         "Search the x402 Bazaar marketplace for APIs by keyword. "
         "Returns matching APIs with IDs, names, descriptions, and prices."
     )
-    args_schema: Type[BaseModel] = SearchInput
+    args_schema: type[BaseModel] = SearchInput
     client: X402Client
 
     class Config:
@@ -71,7 +70,7 @@ class X402CallTool(BaseTool):
         "Input: service_id and optional params (JSON string). "
         "Returns: API response data."
     )
-    args_schema: Type[BaseModel] = CallInput
+    args_schema: type[BaseModel] = CallInput
     client: X402Client
 
     class Config:
@@ -79,7 +78,9 @@ class X402CallTool(BaseTool):
 
     def _run(self, service_id: str, params: str = "{}") -> str:
         try:
-            parsed_params: dict[str, Any] = json.loads(params) if isinstance(params, str) else params
+            parsed_params: dict[str, Any] = (
+                json.loads(params) if isinstance(params, str) else params
+            )
             result = self.client.call(service_id, params=parsed_params)
             data_str = json.dumps(result.data, indent=2, default=str)
             payment_info = ""

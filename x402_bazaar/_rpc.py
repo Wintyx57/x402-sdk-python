@@ -118,8 +118,8 @@ class RpcClient:
 
         if not result or result == "0x":
             return 0.0
-        raw_balance = int(result, 16)
-        return raw_balance / (10**decimals)
+        raw_balance = int(str(result), 16)
+        return float(raw_balance / (10**decimals))
 
     def get_balance_sync(
         self,
@@ -141,49 +141,57 @@ class RpcClient:
 
         if not result or result == "0x":
             return 0.0
-        raw_balance = int(result, 16)
-        return raw_balance / (10**decimals)
+        raw_balance = int(str(result), 16)
+        return float(raw_balance / (10**decimals))
 
     async def get_transaction_count(
         self, address: str, *, client: httpx.AsyncClient | None = None
     ) -> int:
         """Get nonce for address."""
         result = await self._call_rpc(
-            "eth_getTransactionCount", [address, "latest"], client=client
+            "eth_getTransactionCount",
+            [address, "latest"],
+            client=client,
         )
-        return int(result, 16)
+        return int(str(result), 16)
 
     def get_transaction_count_sync(
         self, address: str, *, client: httpx.Client | None = None
     ) -> int:
         """Synchronous nonce."""
         result = self._call_rpc_sync(
-            "eth_getTransactionCount", [address, "latest"], client=client
+            "eth_getTransactionCount",
+            [address, "latest"],
+            client=client,
         )
-        return int(result, 16)
+        return int(str(result), 16)
 
     async def get_gas_price(self, *, client: httpx.AsyncClient | None = None) -> int:
         """Get current gas price in wei."""
         result = await self._call_rpc("eth_gasPrice", [], client=client)
-        return int(result, 16)
+        return int(str(result), 16)
 
     async def send_raw_transaction(
         self, signed_tx: str, *, client: httpx.AsyncClient | None = None
     ) -> str:
         """Broadcast signed transaction, return tx hash."""
         result = await self._call_rpc(
-            "eth_sendRawTransaction", [signed_tx], client=client
+            "eth_sendRawTransaction",
+            [signed_tx],
+            client=client,
         )
-        return result
+        return str(result)
 
     def send_raw_transaction_sync(
         self, signed_tx: str, *, client: httpx.Client | None = None
     ) -> str:
         """Synchronous broadcast."""
         result = self._call_rpc_sync(
-            "eth_sendRawTransaction", [signed_tx], client=client
+            "eth_sendRawTransaction",
+            [signed_tx],
+            client=client,
         )
-        return result
+        return str(result)
 
     async def wait_for_receipt(
         self,
@@ -198,15 +206,13 @@ class RpcClient:
         import asyncio
 
         for _ in range(max_retries):
-            result = await self._call_rpc(
-                "eth_getTransactionReceipt", [tx_hash], client=client
-            )
+            result = await self._call_rpc("eth_getTransactionReceipt", [tx_hash], client=client)
             if result is not None:
                 status = int(result.get("status", "0x0"), 16)
                 if status == 0:
                     raise NetworkError(f"Transaction reverted: {tx_hash}")
                 if confirmations <= 1:
-                    return result
+                    return dict(result)
                 # Check block confirmations
                 block_number = int(result["blockNumber"], 16)
                 latest = await self._call_rpc("eth_blockNumber", [], client=client)
