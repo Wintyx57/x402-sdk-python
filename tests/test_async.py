@@ -215,6 +215,25 @@ async def test_fund_wallet_async():
         assert info["wallet_address"] == client.wallet_address
 
 
+# ── Async Faucet ────────────────────────────────────────────────────
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_claim_faucet_async():
+    key = "0x" + "ab" * 32
+    async with X402Client(private_key=key) as client:
+        respx.post("https://x402-api.onrender.com/api/faucet/claim").mock(
+            return_value=httpx.Response(
+                200,
+                json={"funded": True, "amount": "0.01", "tx_hash": "0xabc"},
+            )
+        )
+        result = await client.claim_faucet_async()
+        assert result["funded"] is True
+        assert result["amount"] == "0.01"
+
+
 # ── Async Context Manager ───────────────────────────────────────────
 
 

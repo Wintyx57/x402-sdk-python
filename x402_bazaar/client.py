@@ -648,6 +648,15 @@ class X402Client:
         )
         return resp.json()
 
+    async def claim_faucet_async(self) -> dict[str, Any]:
+        """Async SKALE CREDITS faucet claim."""
+        client = self._get_async_client()
+        resp = await client.post(
+            f"{self._base_url}/api/faucet/claim",
+            json={"address": self._address},
+        )
+        return resp.json()
+
     # ── Fund Wallet ──────────────────────────────────────────────────
 
     def fund_wallet(self) -> dict[str, Any]:

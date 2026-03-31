@@ -92,6 +92,31 @@ async def test_health_async_live():
 
 
 @pytest.mark.integration
+def test_get_service_live(live_client: X402Client):
+    """Get details of a specific service."""
+    services = live_client.search("joke")
+    if not services:
+        pytest.skip("No joke services found")
+
+    svc = live_client.get_service(services[0].id)
+    assert svc.id == services[0].id
+    assert svc.name
+    assert svc.url.startswith("http")
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_get_service_async_live():
+    """Async get_service against real backend."""
+    async with X402Client(chain="skale") as client:
+        services = await client.search_async("joke")
+        if not services:
+            pytest.skip("No joke services found")
+        svc = await client.get_service_async(services[0].id)
+        assert svc.id == services[0].id
+
+
+@pytest.mark.integration
 def test_call_free_tier_live(live_client: X402Client):
     """Call a service via free tier (no payment needed)."""
     from x402_bazaar.exceptions import InsufficientBalanceError, PaymentError

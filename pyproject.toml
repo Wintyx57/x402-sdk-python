@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "x402-bazaar"
-version = "1.1.0"
+version = "1.2.0"
 description = "Python SDK for x402 Bazaar — autonomous API marketplace with auto-payment"
 readme = "README.md"
 license = "MIT"
@@ -48,8 +48,10 @@ dev = [
 
 [project.urls]
 Homepage = "https://x402.ai"
-Repository = "https://github.com/anthropics/x402-sdk-python"
-Documentation = "https://docs.x402.ai/sdk/python"
+Repository = "https://github.com/Wintyx57/x402-sdk-python"
+Documentation = "https://github.com/Wintyx57/x402-sdk-python#readme"
+Changelog = "https://github.com/Wintyx57/x402-sdk-python/blob/master/CHANGELOG.md"
+Issues = "https://github.com/Wintyx57/x402-sdk-python/issues"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
