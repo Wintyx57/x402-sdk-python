@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import concurrent.futures
 import hashlib
 import hmac
 import json as json_module
@@ -564,39 +566,47 @@ class X402Client:
 
     # ── Balance ──────────────────────────────────────────────────────
 
+    def _fetch_balance_for_chain(self, net: str) -> tuple[str, float]:
+        """Fetch USDC balance for one chain, returning -1.0 on error."""
+        try:
+            handler = PaymentHandler(self._private_key, net)  # type: ignore[arg-type]
+            bal = handler.get_balance_sync()
+            return net, round(bal, 6)
+        except Exception:
+            return net, -1.0
+
     def get_balance(self, chain: Network | None = None) -> dict[str, float]:
-        """Get USDC balance. If chain specified, returns single chain. Otherwise all chains."""
+        """Get USDC balance. If chain specified, returns single chain. Otherwise all chains in parallel."""
         if chain:
             handler = PaymentHandler(self._private_key, chain)
             bal = handler.get_balance_sync()
             return {chain: round(bal, 6)}
 
-        balances: dict[str, float] = {}
-        for net in CHAINS:
-            try:
-                handler = PaymentHandler(self._private_key, net)
-                bal = handler.get_balance_sync()
-                balances[net] = round(bal, 6)
-            except Exception:
-                balances[net] = -1  # error
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            futs = [executor.submit(self._fetch_balance_for_chain, net) for net in CHAINS]
+            balances: dict[str, float] = {}
+            for fut in concurrent.futures.as_completed(futs):
+                net, bal = fut.result()
+                balances[net] = bal
         return balances
 
     async def get_balance_async(self, chain: Network | None = None) -> dict[str, float]:
-        """Async balance check."""
+        """Async balance check — fetches all chains in parallel via asyncio.gather."""
         if chain:
             handler = PaymentHandler(self._private_key, chain)
             bal = await handler.get_balance()
             return {chain: round(bal, 6)}
 
-        balances: dict[str, float] = {}
-        for net in CHAINS:
+        async def _get_one(net: str) -> tuple[str, float]:
             try:
-                handler = PaymentHandler(self._private_key, net)
+                handler = PaymentHandler(self._private_key, net)  # type: ignore[arg-type]
                 bal = await handler.get_balance()
-                balances[net] = round(bal, 6)
+                return net, round(bal, 6)
             except Exception:
-                balances[net] = -1
-        return balances
+                return net, -1.0
+
+        results = await asyncio.gather(*(_get_one(net) for net in CHAINS))
+        return dict(results)
 
     # ── Budget ───────────────────────────────────────────────────────
 

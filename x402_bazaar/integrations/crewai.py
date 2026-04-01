@@ -17,6 +17,17 @@ except ImportError as e:
     ) from e
 
 from x402_bazaar.client import X402Client
+from x402_bazaar.types import CallResult
+
+
+def _format_call_result(result: CallResult) -> str:
+    """Serialize a CallResult to a human-readable string for LLM consumption."""
+    data_str = json.dumps(result.data, indent=2, default=str)
+    if result.tx_hash:
+        return f"{data_str}\n[Paid {result.payment_amount} USDC on {result.chain}]"
+    if result.free_tier_used:
+        return f"{data_str}\n[Free tier — no payment]"
+    return data_str
 
 
 class SearchInput(BaseModel):
@@ -60,6 +71,17 @@ class X402SearchTool(BaseTool):
             lines.append(f"- {svc.name} (id: {svc.id}): {svc.description[:100]} [{price_str}]")
         return "\n".join(lines)
 
+    async def _arun(self, query: str) -> str:
+        results = await self.client.search_async(query)
+        if not results:
+            return f"No APIs found for '{query}'"
+
+        lines = [f"Found {len(results)} API(s):"]
+        for svc in results[:10]:
+            price_str = f"${svc.price_usdc}" if svc.price_usdc > 0 else "FREE"
+            lines.append(f"- {svc.name} (id: {svc.id}): {svc.description[:100]} [{price_str}]")
+        return "\n".join(lines)
+
 
 class X402CallTool(BaseTool):
     """Call an API on x402 Bazaar with automatic USDC payment."""
@@ -82,12 +104,16 @@ class X402CallTool(BaseTool):
                 json.loads(params) if isinstance(params, str) else params
             )
             result = self.client.call(service_id, params=parsed_params)
-            data_str = json.dumps(result.data, indent=2, default=str)
-            payment_info = ""
-            if result.tx_hash:
-                payment_info = f"\n[Paid {result.payment_amount} USDC on {result.chain}]"
-            elif result.free_tier_used:
-                payment_info = "\n[Free tier — no payment]"
-            return f"{data_str}{payment_info}"
+            return _format_call_result(result)
+        except Exception as e:
+            return f"Error: {e}"
+
+    async def _arun(self, service_id: str, params: str = "{}") -> str:
+        try:
+            parsed_params: dict[str, Any] = (
+                json.loads(params) if isinstance(params, str) else params
+            )
+            result = await self.client.call_async(service_id, params=parsed_params)
+            return _format_call_result(result)
         except Exception as e:
             return f"Error: {e}"

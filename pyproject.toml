@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "x402-bazaar"
-version = "1.2.1"
+version = "1.3.0"
 description = "Python SDK for x402 Bazaar — autonomous API marketplace with auto-payment"
 readme = "README.md"
 license = "MIT"

@@ -44,9 +44,11 @@ class X402SearchTool(BaseTool):
 
     name: str = "x402_search"
     description: str = (
-        "Search the x402 Bazaar marketplace for APIs. "
-        "Input: a search query string. "
-        "Returns: list of matching APIs with their IDs, names, descriptions, and prices in USDC."
+        "Search the x402 Bazaar API marketplace. "
+        "Input a natural language query describing what you need "
+        "(e.g. 'weather API', 'text translation', 'image generation'). "
+        "Returns a list of available APIs with names, prices, and IDs. "
+        "Use this BEFORE calling an API to find the right service_id."
     )
     args_schema: type[BaseModel] = SearchInput
     client: X402Client
@@ -90,9 +92,11 @@ class X402CallTool(BaseTool):
 
     name: str = "x402_call"
     description: str = (
-        "Call an API on x402 Bazaar by service_id. Payment is automatic. "
-        "Input: service_id (from search results) and optional params dict. "
-        "Returns: API response data."
+        "Call a paid API on x402 Bazaar. "
+        "Requires a service_id (get it from search first) and optional params dict. "
+        "Automatically handles USDC payment. "
+        "Returns the API response data. "
+        "Costs real USDC — search first to find the cheapest option."
     )
     args_schema: type[BaseModel] = CallInput
     client: X402Client
