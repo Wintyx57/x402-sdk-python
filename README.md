@@ -5,7 +5,7 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Python SDK for [x402 Bazaar](https://x402.ai) — the autonomous API marketplace with automatic USDC payments.
+Python SDK for [x402 Bazaar](https://x402bazaar.org) — the autonomous API marketplace with automatic USDC payments.
 
 **No other SDK combines crypto payments + API marketplace + AI agent tools in one package.**
 
