@@ -1,11 +1,10 @@
 """Tests for payment handler."""
 
-import pytest
-import respx
 import httpx
+import respx
 
 from x402_bazaar.payment import PaymentHandler, parse_402_response
-from x402_bazaar.types import NetworkInfo, PaymentDetails, PaymentResponse
+from x402_bazaar.types import NetworkInfo, PaymentDetails
 
 
 def test_payment_handler_init():

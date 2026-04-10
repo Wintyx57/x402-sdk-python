@@ -4,12 +4,10 @@ import hashlib
 import hmac as hmac_mod
 import json
 
-import pytest
-import respx
 import httpx
+import respx
 
 from x402_bazaar.client import X402Client
-
 
 # ── HMAC Validation ─────────────────────────────────────────────────
 

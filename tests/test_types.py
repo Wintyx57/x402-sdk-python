@@ -3,6 +3,7 @@
 from x402_bazaar.types import (
     BudgetStatus,
     CallResult,
+    FreeTierInfo,
     HealthResponse,
     NetworkInfo,
     PaymentDetails,
@@ -11,7 +12,6 @@ from x402_bazaar.types import (
     ServiceInfo,
     SplitInfo,
     WalletInfo,
-    FreeTierInfo,
 )
 
 

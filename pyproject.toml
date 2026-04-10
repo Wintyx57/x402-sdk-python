@@ -55,8 +55,10 @@ Issues = "https://github.com/Wintyx57/x402-sdk-python/issues"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+# Skip live integration tests by default — run with: pytest -m integration
+addopts = "-m 'not integration'"
 markers = [
-    "integration: marks tests that hit real backend (deselect with '-m not integration')",
+    "integration: marks tests that hit real backend (run with '-m integration')",
 ]
 
 [tool.ruff]

@@ -1,12 +1,11 @@
 """Tests for async methods."""
 
+import httpx
 import pytest
 import respx
-import httpx
 
 from x402_bazaar.client import X402Client
 from x402_bazaar.exceptions import ApiError
-
 
 # ── Async Search ─────────────────────────────────────────────────────
 
@@ -151,6 +150,7 @@ async def test_call_async_free_tier():
 @pytest.mark.asyncio
 async def test_call_async_402():
     from unittest.mock import AsyncMock, patch
+
     from x402_bazaar.types import PaymentResult
 
     key = "0x" + "ab" * 32

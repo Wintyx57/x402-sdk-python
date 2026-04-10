@@ -4,7 +4,7 @@ import time
 
 import pytest
 
-from x402_bazaar.budget import BudgetConfig, BudgetTracker, PERIOD_SECONDS
+from x402_bazaar.budget import PERIOD_SECONDS, BudgetConfig, BudgetTracker
 from x402_bazaar.exceptions import BudgetExceededError
 
 

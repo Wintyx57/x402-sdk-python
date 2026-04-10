@@ -576,7 +576,10 @@ class X402Client:
             return net, -1.0
 
     def get_balance(self, chain: Network | None = None) -> dict[str, float]:
-        """Get USDC balance. If chain specified, returns single chain. Otherwise all chains in parallel."""
+        """Get USDC balance.
+
+        If chain specified, returns single chain. Otherwise all chains in parallel.
+        """
         if chain:
             handler = PaymentHandler(self._private_key, chain)
             bal = handler.get_balance_sync()

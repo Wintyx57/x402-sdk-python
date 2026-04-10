@@ -1,8 +1,8 @@
 """Tests for RPC client."""
 
+import httpx
 import pytest
 import respx
-import httpx
 
 from x402_bazaar._rpc import RpcClient, encode_transfer
 from x402_bazaar.exceptions import NetworkError

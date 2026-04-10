@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.3.0] - 2026-04-02
+
+### Added
+- Parallel balance queries: `get_balance()` uses ThreadPoolExecutor, `get_balance_async()` uses asyncio.gather()
+- Async CrewAI support: `_arun()` method on all CrewAI tools
+- Enriched LangChain tool descriptions for better LLM orchestration
+- Convenience imports in `integrations/__init__.py` with `__all__`
+
+### Improved
+- 147 tests (was 103)
+
+## [1.2.1] - 2026-04-01
+
+### Fixed
+- All ruff and mypy lint errors resolved (clean CI)
+
 ## [1.2.0] - 2026-03-31
 
 ### Added

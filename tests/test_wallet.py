@@ -1,19 +1,18 @@
 """Tests for wallet management."""
 
 import json
-import os
 import tempfile
 from pathlib import Path
 
 import pytest
 
+from x402_bazaar.exceptions import InvalidConfigError
 from x402_bazaar.wallet import (
     decrypt_wallet,
     encrypt_wallet,
     generate_wallet,
     load_or_create_wallet,
 )
-from x402_bazaar.exceptions import InvalidConfigError
 
 
 def test_generate_wallet():

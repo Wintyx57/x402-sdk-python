@@ -1,13 +1,12 @@
 """Tests for X402Client."""
 
-import json
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
+import httpx
 import pytest
 import respx
-import httpx
 
 from x402_bazaar.client import X402Client
 from x402_bazaar.exceptions import (
@@ -15,8 +14,6 @@ from x402_bazaar.exceptions import (
     BudgetExceededError,
     InvalidConfigError,
 )
-from x402_bazaar.types import BudgetStatus
-
 
 # ── Initialization ───────────────────────────────────────────────────
 
